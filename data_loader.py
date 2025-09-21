@@ -73,6 +73,7 @@ from langchain.text_splitter import RecursiveCharacterTextSplitter
 # --- STABILITY FIX: Import the more stable PyPDFLoader ---
 from langchain_community.document_loaders import TextLoader, CSVLoader, PyPDFLoader
 from langchain_unstructured import UnstructuredLoader
+from langchain_community.document_loaders import JSONLoader
 
 # SET TO True TO SEE A PREVIEW OF LOADED CONTENT
 DEBUG_MODE = True
@@ -82,6 +83,7 @@ LOADER_MAPPING = {
     ".csv": (CSVLoader, {"encoding": "utf-8"}),
     ".pdf": (PyPDFLoader, {}),  # Reverted to the stable PyPDFLoader
     ".txt": (TextLoader, {"encoding": "utf-8"}),
+    ".jsonl": (JSONLoader, {"jq_schema": '.text', "json_lines": True}),
 }
 
 def normalize_text(text: str) -> str:
