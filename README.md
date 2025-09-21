@@ -56,5 +56,7 @@ GROQ_API_KEY="gsk_YourCopiedGroqApiKeyHere"
 
 ```
 ### How to run the bot:
+```
 1. pip install -r requirements.txt
 2. python app.py
+```
