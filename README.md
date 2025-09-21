@@ -29,7 +29,7 @@ The codebase is organized into logical modules for clarity and maintainability:
 ```/
 |-- /data/                  # Folder to place your source documents
 |   |-- cleaned_bhagavad_gita.csv
-|   |-- ... any other documents (.pdf, .txt, .csv, .jsonl etc)
+|   |-- ... any other documents (.pdf, .txt, .csv etc)
 |
 |-- app.py                  # Main entry point, runs the interactive CLI
 |-- rag_chatbot.py          # Contains the core RAG logic and chatbot class
@@ -54,6 +54,10 @@ The bot requires a free Groq API key to function.
 ```env
 GROQ_API_KEY="gsk_YourCopiedGroqApiKeyHere"
 
+```
+### How to run the bot:
+
+```
 ```
 ## Example Ouput:
 ... [loading proceeds] ...
