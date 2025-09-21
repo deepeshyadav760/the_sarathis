@@ -1,0 +1,26 @@
+# requirements.txt
+
+# Core LangChain and data libraries
+langchain
+pandas
+faiss-cpu
+python-dotenv
+
+# The official integration for Groq
+langchain-groq
+
+# --- STABILITY FIX ---
+# Explicitly define our core ML libraries to prevent conflicts
+torch
+transformers
+sentence-transformers
+FlagEmbedding
+
+# --- STABILITY FIX ---
+# Use the lightweight, stable PDF loader and its dependency
+pypdf
+langchain-community
+
+# Use the base unstructured loader only as a fallback
+unstructured
+langchain-unstructured

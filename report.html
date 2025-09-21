@@ -1,0 +1,166 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>NYD 2026 Hackathon Submission Report</title>
+    <style>
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+            line-height: 1.6;
+            margin: 0 auto;
+            max-width: 800px;
+            padding: 20px;
+            color: #333;
+        }
+        h1, h2, h3 {
+            color: #222;
+            border-bottom: 1px solid #ddd;
+            padding-bottom: 10px;
+        }
+        h1 {
+            text-align: center;
+        }
+        code {
+            background-color: #f4f4f4;
+            padding: 2px 6px;
+            border-radius: 4px;
+            font-family: "Courier New", Courier, monospace;
+        }
+        pre {
+            background-color: #f4f4f4;
+            padding: 15px;
+            border-radius: 5px;
+            overflow-x: auto;
+            white-space: pre-wrap;
+            word-wrap: break-word;
+        }
+        pre code {
+            padding: 0;
+            background: none;
+        }
+        strong {
+            font-weight: 600;
+        }
+        .flowchart {
+            text-align: center;
+            font-family: "Courier New", Courier, monospace;
+            background-color: #f9f9f9;
+            padding: 15px;
+            border: 1px solid #eee;
+            border-radius: 5px;
+            font-size: 14px;
+        }
+    </style>
+</head>
+<body>
+
+    <h1>NYD 2026 Hackathon Submission: Gita Chatbot</h1>
+    <h2>Project Report: Code Pipeline and Explanation</h2>
+
+    <hr>
+
+    <h3>1. Introduction</h3>
+    <p>This document outlines the technical architecture and code pipeline for the Gita Chatbot project, submitted for the NYD 2026 Hackathon. The primary goal of this initial submission is to fulfill the Month 1 deliverable: "A working chatbot that can load any new dataset without any code changes."</p>
+    <p>Our solution is a flexible and high-performance Retrieval-Augmented Generation (RAG) system. It is designed to be data-agnostic, allowing users to create a knowledge base from any directory of supported documents. The architecture leverages local embeddings for efficiency and a powerful open-source LLM (Llama 3 via Groq) for fast, accurate, and grounded responses.</p>
+
+    <h3>2. System Architecture: A High-Level Overview</h3>
+    <p>The chatbot operates on a RAG pipeline, which can be broken down into four main stages. This design ensures that the model's responses are based solely on the documents provided by the user, making it an effective fact-checker.</p>
+    
+    <p><strong>Architectural Flowchart:</strong></p>
+    <div class="flowchart">
+        [User Input: Directory Path] &rarr; <br>
+        [1. Data Loading & Pre-processing] &rarr; <br>
+        [2. Embedding & Vector Storage] &rarr; <br>
+        [User Input: Question] &rarr; <br>
+        [3. Retrieval] &rarr; <br>
+        [4. Generation] &rarr; <br>
+        [Chatbot Answer]
+    </div>
+
+    <ol>
+        <li><strong>Data Loading & Pre-processing (<code>data_loader.py</code>):</strong> The system ingests various document types from a user-specified directory, cleans the text, and splits it into manageable chunks.</li>
+        <li><strong>Embedding & Vector Storage (<code>rag_chatbot.py</code>):</strong> These text chunks are converted into numerical representations (embeddings) and stored in an efficient, searchable vector database.</li>
+        <li><strong>Retrieval (<code>rag_chatbot.py</code>):</strong> When a user asks a question, the system retrieves the most relevant text chunks from the vector store.</li>
+        <li><strong>Generation (<code>rag_chatbot.py</code>):</strong> The retrieved chunks and the user's question are sent to a Large Language Model (LLM), which generates a coherent answer based <em>only</em> on the provided context.</li>
+    </ol>
+
+    <h3>3. Detailed Pipeline Stages</h3>
+
+    <h4>Stage 1: Data Loading and Pre-processing</h4>
+    <p><strong>File:</strong> <code>data_loader.py</code></p>
+    <p>This stage is the foundation of the chatbot's knowledge base.</p>
+    <ol>
+        <li><strong>Dynamic Directory Loading:</strong> The <code>load_and_chunk_directory</code> function takes a directory path as input. It iterates through all files, identifying their type by extension.</li>
+        <li><strong>Multi-Format Document Loading:</strong> A <code>LOADER_MAPPING</code> dictionary robustly handles different file types (<code>.pdf</code>, <code>.csv</code>, <code>.txt</code>). For stability and reliability, it uses specific loaders like <code>PyPDFLoader</code> for PDFs. Unstructured data is handled by a fallback <code>UnstructuredLoader</code>.</li>
+        <li><strong>Text Normalization (Key Feature):</strong> A crucial pre-processing step is the <code>normalize_text</code> function. It removes diacritics (e.g., converting <code>ā</code> to <code>a</code>). This is essential for accurately processing texts like the Bhagavad Gita, which contain Sanskrit transliterations, ensuring that the embedding model works with a clean, standardized vocabulary.</li>
+<pre><code># From data_loader.py
+def normalize_text(text: str) -> str:
+    return ''.join(
+        c for c in unicodedata.normalize('NFKD', text)
+        if not unicodedata.combining(c)
+    )
+</code></pre>
+        <li><strong>Text Chunking:</strong> After loading, the documents are split into chunks of 1000 characters with a 200-character overlap using <code>RecursiveCharacterTextSplitter</code>. This overlap ensures that semantic context is not lost at the boundaries of chunks, which is vital for effective retrieval.</li>
+    </ol>
+
+    <h4>Stage 2: Embedding and Vector Storage</h4>
+    <p><strong>File:</strong> <code>rag_chatbot.py</code></p>
+    <p>Once the data is cleaned and chunked, it is converted into a format the machine can understand and search.</p>
+    <ol>
+        <li><strong>Local Embeddings:</strong> The <code>_create_retriever</code> method uses <code>HuggingFaceEmbeddings</code> with the <code>sentence-transformers/all-MiniLM-L6-v2</code> model. This model runs locally, making the embedding process fast and free, without reliance on external APIs for this step.</li>
+        <li><strong>FAISS Vector Store:</strong> The generated embeddings are stored in a <code>FAISS</code> (Facebook AI Similarity Search) vector store. FAISS is an in-memory library that is highly optimized for efficient similarity searches on dense vectors, making it ideal for fast retrieval.</li>
+        <li><strong>Retriever Initialization:</strong> The vector store is then exposed as a <code>retriever</code>, configured to fetch the top 3 most relevant documents (<code>k=3</code>) for any given query.</li>
+    </ol>
+
+    <h4>Stage 3: Retrieval</h4>
+    <p><strong>File:</strong> <code>rag_chatbot.py</code></p>
+    <p>This stage is triggered when the user asks a question.</p>
+    <ol>
+        <li><strong>Query Embedding:</strong> The user's question is first converted into a vector embedding using the same <code>all-MiniLM-L6-v2</code> model.</li>
+        <li><strong>Similarity Search:</strong> The retriever performs a similarity search in the FAISS vector store to find the text chunks whose embeddings are closest to the question's embedding.</li>
+        <li><strong>Context Augmentation:</strong> These top 3 relevant chunks are collected to serve as the "context" for the final stage.</li>
+    </ol>
+    
+    <h4>Stage 4: Generation</h4>
+    <p><strong>File:</strong> <code>rag_chatbot.py</code></p>
+    <p>This is the final stage where the answer is generated.</p>
+    <ol>
+        <li><strong>LLM Integration (Groq API):</strong> The system uses the <code>ChatGroq</code> integration to connect to the Llama 3 model (<code>llama-3.3-70b-versatile</code>). This choice was made for its state-of-the-art performance and extremely low latency, providing a near-instant user experience.</li>
+        <li><strong>Grounded Prompting:</strong> A carefully crafted prompt template is used to instruct the LLM. This is the core of the fact-checking capability. The template explicitly tells the model to <strong>"Use only the following retrieved context to answer the question. If you don't know the answer, just say that you don't know."</strong></li>
+<pre><code># From rag_chatbot.py - Prompt Template
+prompt_template = """
+Use only the following retrieved context to answer the question.
+If you don't know the answer, just say that you don't know.
+
+Context:
+{context}
+
+Question:
+{input}
+
+Answer:
+"""
+</code></pre>
+        <li><strong>Chain Execution:</strong> LangChain's <code>create_retrieval_chain</code> is used to tie everything together. This chain automatically handles the process of taking the user's question, passing it to the retriever to get the context, and then sending both the context and the question to the LLM to get the final, grounded answer.</li>
+        <li><strong>Response Delivery:</strong> The generated answer is extracted from the response object and printed to the user in the command-line interface.</li>
+    </ol>
+
+    <h3>4. User Interface and Control Flow</h3>
+    <p><strong>File:</strong> <code>app.py</code></p>
+    <p>The <code>main</code> function in <code>app.py</code> serves as the user-facing controller for the entire pipeline.</p>
+    <ul>
+        <li><strong>Initialization:</strong> It first prompts the user for a directory path and initializes the <code>RAGChatbot</code> only after the data has been successfully loaded and processed.</li>
+        <li><strong>Interactive Loop:</strong> It then enters a <code>while</code> loop, allowing the user to ask multiple questions.</li>
+        <li><strong>Command Handling:</strong> The loop includes simple commands for a clean user experience:
+            <ul>
+                <li><code>exit</code>: Terminates the program.</li>
+                <li><code>new</code>: Resets the chatbot, allowing the user to load a new knowledge base from a different directory.</li>
+            </ul>
+        </li>
+    </ul>
+
+    <h3>5. Conclusion</h3>
+    <p>This RAG pipeline represents a robust and scalable solution that meets the core requirements of the NYD 2026 Hackathon's first stage. Its data-agnostic design, combined with efficient local embeddings and high-speed LLM inference via Groq, creates a powerful tool that is both a conversational chatbot and a reliable fact-checker. The specialized text normalization demonstrates a thoughtful approach to handling specific datasets like the Bhagavad Gita, making the system highly adaptable.</p>
+</body>
+</html>
