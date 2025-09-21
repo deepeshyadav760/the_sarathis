@@ -58,34 +58,3 @@ GROQ_API_KEY="gsk_YourCopiedGroqApiKeyHere"
 ### How to run the bot:
 1. pip install -r requirements.txt
 2. python app.py
-```
-```
-## Example Ouput:
-... [loading proceeds] ...
-
-✅ Knowledge Base is ready! Ask me anything about your documents.
-   (Type 'exit' to quit or 'new' to load a new directory)
-
-> what is the duration of the hackthon ?
-
-🤖 Answer: The duration of the hackathon is 4 months.
-
-> who is Arjuna, give answer along with the references?
-
-🤖 Answer: I don't know who Arjuna is, but according to the context, he is mentioned in the Bhagavad Gita, specifically in Chapter III and Chapter XI, with comments from Śrīdhara and Madhusūdana.
-
-> who is Narendra Modi?
-
-🤖 Answer: I don't know.
-
-> how much price does a winner will get?
-
-🤖 Answer: The prize money varies depending on the position and the stage.
-
-For each month, the prizes are:
-- First Prize: INR 5,000/-
-- Second Prize: INR 3,000/-
-- Third Prize: INR 2,000/-
-
-The Grand Prize, announced on Jan 12, 2026, is:
-- INR 10,000/- for the best cumulative performance across all 4 months. 
