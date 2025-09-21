@@ -1,6 +1,6 @@
-# NYD 2026 Hackathon: The Knowledge Bot (Month 1 Submission)
+# The Gita Chatbot
 
-This project submission for Month 1 of the NYD 2026 Hackathon. The core deliverable for this stage was to create a working chatbot that can load any new dataset without requiring code changes.
+The core deliverable for this stage was to create a working chatbot that can load any new dataset without requiring code changes.
 
 We have successfully built a powerful, multi-document **Knowledge Bot** that exceeds this requirement. Our solution can ingest an entire directory of mixed-format documents (CSVs, PDFs, TXTs) to create a unified, conversational knowledge base. It is built on a robust Retrieval-Augmented Generation (RAG) architecture, powered by the state-of-the-art Llama 3 model via the high-speed Groq API.
 
@@ -28,9 +28,8 @@ The codebase is organized into logical modules for clarity and maintainability:
 
 ```/
 |-- /data/                  # Folder to place your source documents
-|   |-- NYD 2026 Hackathon Guidelines (1).pdf
 |   |-- cleaned_bhagavad_gita.csv
-|   |-- ... any other documents
+|   |-- ... any other documents (.pdf, .txt, .csv, .jsonl etc)
 |
 |-- app.py                  # Main entry point, runs the interactive CLI
 |-- rag_chatbot.py          # Contains the core RAG logic and chatbot class
@@ -57,26 +56,6 @@ GROQ_API_KEY="gsk_YourCopiedGroqApiKeyHere"
 
 ```
 ## Example Ouput:
-
-==================================================
- Welcome to the NYD 2026 Hackathon Geeta Bot!
-==================================================
-
-Enter the path to your data directory (e.g., ./data): data
-Loading documents from directory: data
-
--> Processing file: NYD 2026 Hackathon Guidelines (1).pdf
-   -> Using loader: PyPDFLoader
-==================== [CONTENT PREVIEW] ====================
-🏆 NYD 2026 Hackathon
-The NYD 2025 Hackathon focused on building a Gita chatbot, while the IYD 2025 Hackathon centered
-on creating a Ramayana fact-checker. Now, the NYD 2026 Hackathon will bring these two ideas
-together — developing an open source chatbot that also serves as a fact-checker.
-Unlike traditional hackathons, this one will run for 4 months with staged submissions. Each stage has
-clear deliverables, and winners will be chosen based on performance at each stage. The final winner
-will be the team/i
-==============================================================
-
 ... [loading proceeds] ...
 
 ✅ Knowledge Base is ready! Ask me anything about your documents.
