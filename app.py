@@ -4,69 +4,75 @@ import os
 import logging
 from rag_chatbot import RAGChatbot
 from data_loader import load_and_chunk_directory
+
 os.environ["TF_CPP_MIN_LOG_LEVEL"] = "3"
-
-# --- SOLUTION FOR VERBOSE LOGS ---
-# Get the logger used by the HTTP client and set its level to WARNING.
-# This will hide the INFO level messages about requests being made.
 logging.getLogger("httpx").setLevel(logging.WARNING)
-# --- END SOLUTION ---
-
+logging.getLogger("sentence_transformers").setLevel(logging.WARNING)
 
 def main():
     """
     Main function to run the command-line chatbot interface.
-    Now loads an entire directory to build a knowledge base.
     """
-    print("="*50)
-    print(" Welcome to the NYD 2026 Hackathon Knowledge Bot! ")
-    print("="*50)
+    print("\n" + "="*70)
+    print("  NYD 2026 HACKATHON - KNOWLEDGE BASE CHATBOT")
+    print("="*70)
     
     chatbot = None
 
     while True:
         if chatbot is None:
-            # Step 1: Get the directory from the user
-            dir_path = input("\nEnter the path to your data directory (e.g., ./data): ")
+            # Get directory from user
+            dir_path = input("\nEnter data directory path (e.g., ./data): ").strip()
             
-            # Validate directory path
+            # Validate directory
             if not os.path.isdir(dir_path):
-                print("\n[ERROR] Directory not found. Please provide a valid path.")
+                print(f"\nERROR: Directory '{dir_path}' not found!")
                 continue
             
-            # Step 2: Load and process all files in the directory
+            # Load and process documents
             documents = load_and_chunk_directory(dir_path)
             
             if not documents:
-                print(f"\n[WARNING] No processable documents found in '{dir_path}'.")
+                print(f"\nERROR: No documents loaded from '{dir_path}'")
+                print("Make sure the directory contains supported files (.pdf, .csv, .txt, .jsonl)")
                 continue
 
-            # Step 3: Initialize the RAG chatbot with the unified documents
+            # Initialize chatbot
             try:
                 chatbot = RAGChatbot(documents)
-                print("\n✅ Knowledge Base is ready! Ask me anything about your documents.")
-                print("   (Type 'exit' to quit or 'new' to load a new directory)")
+                print("\nReady! Ask questions or type 'exit' to quit, 'new' for new directory")
             except Exception as e:
-                print(f"\n[ERROR] Failed to initialize chatbot: {e}")
-                print("Please check your API keys and dependencies.")
+                print(f"\nERROR: Failed to initialize chatbot: {e}")
                 break
 
         else:
-            # Step 4: Start the conversation
-            question = input("\n> ")
+            # Get user question
+            question = input("\n> ").strip()
+            
+            if not question:
+                continue
             
             if question.lower() == 'exit':
-                print("\nGoodbye!")
+                print("\nGoodbye!\n")
                 break
             
             if question.lower() == 'new':
-                print("\nResetting to load a new knowledge base...")
+                print("\nResetting chatbot...\n")
                 chatbot = None
                 continue
+            
+            if question.lower() == 'debug':
+                # Debug mode: show sources
+                answer, sources = chatbot.ask_with_sources(question)
+                print(f"\nAnswer: {answer}")
+                print(f"\nSources used ({len(sources)} chunks):")
+                for i, doc in enumerate(sources[:3], 1):
+                    print(f"\n[{i}] {doc.page_content[:200]}...")
+                continue
 
-            # Get the answer from the chatbot
+            # Get answer
             answer = chatbot.ask(question)
-            print(f"\n🤖 Answer: {answer}")
+            print(f"\nAnswer: {answer}")
 
 
 if __name__ == "__main__":
