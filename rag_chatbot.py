@@ -5,67 +5,110 @@ from dotenv import load_dotenv
 from langchain.prompts import ChatPromptTemplate
 from langchain_community.vectorstores import FAISS
 from langchain_huggingface import HuggingFaceEmbeddings
-# from langchain_community.embeddings import HuggingFaceEmbeddings # This is for local embeddings, so it stays
 from langchain.chains.combine_documents import create_stuff_documents_chain
 from langchain.chains import create_retrieval_chain
-
-# ** THE FIX: Import the new Groq chat model **
 from langchain_groq import ChatGroq
 
 class RAGChatbot:
     """
-    The RAG Chatbot engine, now powered by Groq and Llama 3.
+    RAG Chatbot powered by Groq and Llama 3.
     """
     def __init__(self, documents):
-        load_dotenv()
-        # ** THE FIX: Check for the new Groq API key **
-        if not os.getenv("GROQ_API_KEY"):
-            raise ValueError("Groq API key not found. Please set it in a .env file.")
+        print("\n" + "="*70)
+        print("INITIALIZING RAG CHATBOT")
+        print("="*70)
         
+        load_dotenv()
+        
+        # Check for Groq API key
+        if not os.getenv("GROQ_API_KEY"):
+            raise ValueError("Groq API key not found. Set GROQ_API_KEY in .env file")
+        
+        print("\n[1/3] Creating vector store...")
         self.retriever = self._create_retriever(documents)
+        
+        print("\n[2/3] Initializing Groq LLM...")
+        self.llm = self._create_llm()
+        
+        print("\n[3/3] Building RAG chain...")
         self.retrieval_chain = self._create_chain()
+        
+        print("\n" + "="*70)
+        print("CHATBOT READY!")
+        print("="*70 + "\n")
 
     def _create_retriever(self, documents):
-        print("Creating embeddings and vector store...")
-        # We still use this for creating the vectors locally. It's fast and free.
-        embeddings = HuggingFaceEmbeddings(model_name="sentence-transformers/all-MiniLM-L6-v2")
-        vector_store = FAISS.from_documents(documents, embeddings)
-        print("Vector store created successfully.")
-        return vector_store.as_retriever(search_kwargs={"k": 3})
-
-    def _create_chain(self):
-        print("Setting up the RAG chain with Groq...")
+        """Create FAISS vector store with embeddings."""
+        embeddings = HuggingFaceEmbeddings(
+            model_name="sentence-transformers/all-MiniLM-L6-v2",
+            model_kwargs={'device': 'cpu'},
+            encode_kwargs={'normalize_embeddings': True}
+        )
         
-        # ** THE FIX: Instantiate the ChatGroq model **
-        # Note: The model name is slightly different. Groq uses 'llama3-70b-8192'
-        llm = ChatGroq(
-            temperature=0.7, 
-            model_name="llama-3.3-70b-versatile"
+        vector_store = FAISS.from_documents(documents, embeddings)
+        print(f"   -> Vector store created with {len(documents)} chunks")
+        
+        # Retrieve more documents for better context
+        return vector_store.as_retriever(
+            search_type="similarity",
+            search_kwargs={"k": 5}  # Retrieve top 5 relevant chunks
         )
 
-        prompt_template = """
-        Use only the following retrieved context to answer the question.
-        If you don't know the answer, just say that you don't know.
+    def _create_llm(self):
+        """Initialize Groq LLM."""
+        llm = ChatGroq(
+            temperature=0.3,  # Lower temperature for more factual responses
+            model_name="llama-3.3-70b-versatile",
+            max_tokens=1024
+        )
+        print(f"   -> Using model: llama-3.3-70b-versatile")
+        return llm
 
-        Context:
-        {context}
+    def _create_chain(self):
+        """Create the RAG retrieval chain."""
+        
+        # Improved prompt for better responses
+        prompt_template = """You are a helpful AI assistant. Answer the question based ONLY on the provided context.
 
-        Question:
-        {input}
+Context:
+{context}
 
-        Answer:
-        """
+Question: {input}
+
+Instructions:
+- If the answer is in the context, provide a clear and detailed response
+- If the information is not in the context, say "I don't have enough information in the provided documents to answer this question."
+- Be specific and cite relevant details from the context
+- Do not make up information
+
+Answer:"""
+        
         prompt = ChatPromptTemplate.from_template(prompt_template)
         
-        question_answer_chain = create_stuff_documents_chain(llm, prompt)
+        question_answer_chain = create_stuff_documents_chain(self.llm, prompt)
         retrieval_chain = create_retrieval_chain(self.retriever, question_answer_chain)
         
-        print("RAG chain is ready.")
+        print(f"   -> RAG chain configured")
         return retrieval_chain
 
     def ask(self, question: str):
+        """Ask a question and get an answer."""
         if not self.retrieval_chain:
-            return "The chatbot is not initialized. Please load a dataset first."
+            return "Chatbot not initialized properly."
         
-        response = self.retrieval_chain.invoke({'input': question})
-        return response['answer']
+        try:
+            response = self.retrieval_chain.invoke({'input': question})
+            return response['answer']
+        except Exception as e:
+            return f"Error processing question: {str(e)}"
+    
+    def ask_with_sources(self, question: str):
+        """Ask a question and get answer with source documents."""
+        if not self.retrieval_chain:
+            return "Chatbot not initialized properly.", []
+        
+        try:
+            response = self.retrieval_chain.invoke({'input': question})
+            return response['answer'], response.get('context', [])
+        except Exception as e:
+            return f"Error: {str(e)}", []
